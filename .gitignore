@@ -3,6 +3,12 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Virtual environments
+.venv/
+
+# Left over from the former Node-based bridge
+node_modules/
+
 # C extensions
 *.so
 
