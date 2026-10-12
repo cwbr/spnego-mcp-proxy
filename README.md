@@ -26,11 +26,22 @@ verschiedenen Namen und URLs eintragen.
 ## Schnellinstallation
 
 Ein Befehl lädt die passende Binary aus dem neuesten Release, prüft die
-Prüfsumme, testet die Verbindung und trägt den Server in Claude Code und VS Code
-ein, soweit installiert. Andere Einträge bleiben erhalten. Von einer vorhandenen
-VS-Code-`mcp.json` wird vorher eine Kopie `mcp.json.bak` angelegt. Enthält die
-Datei Kommentare, bleibt sie unverändert, und das Skript gibt den Eintrag zum
-manuellen Einfügen aus. Ein vorhandener Eintrag mit demselben Namen wird ersetzt.
+Prüfsumme, testet die Verbindung und trägt den Server in alle installierten
+Clients ein:
+
+| Client | Konfiguration |
+|---|---|
+| Claude Code | `claude mcp add` (Scope user) |
+| VS Code (auch Insiders) | User-`mcp.json`, Schlüssel `servers` |
+| GitHub Copilot app und Copilot CLI | `~/.copilot/mcp-config.json` bzw. `%USERPROFILE%\.copilot\mcp-config.json` (oder `$COPILOT_HOME`), Schlüssel `mcpServers` |
+
+Die GitHub Copilot app hat keine eigene Datei. Sie übernimmt automatisch die
+MCP-Server der Copilot CLI.
+
+Andere Einträge bleiben erhalten. Von einer vorhandenen Konfigurationsdatei
+wird vorher eine Kopie `*.bak` angelegt. Enthält die Datei Kommentare, bleibt
+sie unverändert, und das Skript gibt den Eintrag zum manuellen Einfügen aus.
+Ein vorhandener Eintrag mit demselben Namen wird ersetzt.
 
 **Windows** (PowerShell, keine Admin-Rechte nötig):
 

@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
 Installs spnego-mcp-proxy on Windows and registers it as MCP server in
-Claude Code and VS Code.
+Claude Code, VS Code and the GitHub Copilot app/CLI.
 
 .EXAMPLE
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/cwbr/spnego-mcp-proxy/main/install.ps1))) -Name myServer -Url https://mcp.example.internal/mcp
@@ -142,41 +142,63 @@ function Register-Claude {
     }
 }
 
+# Adds the server under the given top-level key of a JSON config file.
+# Other entries are kept and a backup is written first.
+function Add-McpServer([string] $Label, [string] $File, [string] $Key, $Entry) {
+    try {
+        $text = if (Test-Path $File) { [IO.File]::ReadAllText($File) } else { '' }
+        # PowerShell 7 would accept comments and silently drop them on write.
+        if ($text -match '(?m)^\s*//|/\*') { throw 'Datei enthält Kommentare' }
+        $config = if ([string]::IsNullOrWhiteSpace($text)) { [pscustomobject]@{} } else { $text | ConvertFrom-Json }
+        if (-not $config.PSObject.Properties[$Key]) {
+            $config | Add-Member -NotePropertyName $Key -NotePropertyValue ([pscustomobject]@{})
+        }
+        $config.$Key | Add-Member -Force -NotePropertyName $Name -NotePropertyValue $Entry
+        if (Test-Path $File) { Copy-Item -Force $File "$File.bak" }
+        $json = $config | ConvertTo-Json -Depth 32
+        [IO.File]::WriteAllText($File, "$json`n", (New-Object Text.UTF8Encoding $false))
+        Write-Ok "${Label}: `"$Name`" in $File eingetragen"
+    } catch {
+        Write-Warn "${Label}: $File konnte nicht automatisch ergänzt werden ($($_.Exception.Message))."
+        Write-Warn "Bitte diesen Eintrag unter `"$Key`" einfügen:"
+        Write-Host ("`"$Name`": " + ($Entry | ConvertTo-Json -Depth 4))
+    }
+}
+
 function Register-VSCode {
     $found = $false
     foreach ($product in 'Code', 'Code - Insiders') {
         $userDir = Join-Path $env:APPDATA "$product\User"
         if (-not (Test-Path $userDir)) { continue }
         $found = $true
-        $file = Join-Path $userDir 'mcp.json'
         $entry = [ordered]@{ type = 'stdio'; command = $exe; env = [ordered]@{ MCP_UPSTREAM_URL = $Url } }
-
-        try {
-            $text = if (Test-Path $file) { [IO.File]::ReadAllText($file) } else { '' }
-            # PowerShell 7 would accept comments and silently drop them on write.
-            if ($text -match '(?m)^\s*//|/\*') { throw 'mcp.json enthält Kommentare' }
-            $config = if ([string]::IsNullOrWhiteSpace($text)) { [pscustomobject]@{} } else { $text | ConvertFrom-Json }
-            if (-not $config.PSObject.Properties['servers']) {
-                $config | Add-Member -NotePropertyName servers -NotePropertyValue ([pscustomobject]@{})
-            }
-            $config.servers | Add-Member -Force -NotePropertyName $Name -NotePropertyValue $entry
-            if (Test-Path $file) { Copy-Item -Force $file "$file.bak" }
-            $json = $config | ConvertTo-Json -Depth 32
-            [IO.File]::WriteAllText($file, "$json`n", (New-Object Text.UTF8Encoding $false))
-            Write-Ok "VS Code: `"$Name`" in $file eingetragen"
-        } catch {
-            Write-Warn "VS Code: $file konnte nicht automatisch ergänzt werden ($($_.Exception.Message))."
-            Write-Warn 'Bitte diesen Eintrag unter "servers" einfügen:'
-            Write-Host ("    `"$Name`": " + ($entry | ConvertTo-Json -Depth 4))
-        }
+        Add-McpServer 'VS Code' (Join-Path $userDir 'mcp.json') 'servers' $entry
     }
     if (-not $found) { Write-Info 'VS Code nicht gefunden, übersprungen' }
+}
+
+# The GitHub Copilot app and Copilot CLI share ~/.copilot/mcp-config.json.
+function Register-Copilot {
+    $dir = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $env:USERPROFILE '.copilot' }
+    if (-not (Test-Path $dir)) {
+        Write-Info 'GitHub Copilot app/CLI nicht gefunden, übersprungen'
+        return
+    }
+    $entry = [ordered]@{
+        type    = 'local'
+        command = $exe
+        args    = @()
+        env     = [ordered]@{ MCP_UPSTREAM_URL = $Url }
+        tools   = @('*')
+    }
+    Add-McpServer 'GitHub Copilot app/CLI' (Join-Path $dir 'mcp-config.json') 'mcpServers' $entry
 }
 
 Install-Binary
 Test-Upstream
 Register-Claude
 Register-VSCode
+Register-Copilot
 
 Write-Host ''
-Write-Host "Fertig. MCP-Server `"$Name`" in Claude Code bzw. VS Code neu starten."
+Write-Host "Fertig. Die MCP-Clients neu starten, damit sie `"$Name`" laden."
