@@ -79,7 +79,7 @@ Eine Installation oder Admin-Rechte sind nicht nötig.
 ### Claude Code
 
 ```powershell
-claude mcp add --scope user --env MCP_UPSTREAM_URL="https://mcp.example.internal/mcp" myServer -- "C:\Users\<kennung>\AppData\Local\spnego-mcp-proxy\spnego-mcp-proxy.exe"
+claude mcp add myServer --scope user --env "MCP_UPSTREAM_URL=https://mcp.example.internal/mcp" -- "C:\Users\<kennung>\AppData\Local\spnego-mcp-proxy\spnego-mcp-proxy.exe"
 ```
 
 ### Manueller Test (PowerShell)
@@ -124,7 +124,7 @@ eines per `kinit` oder über die Ticket-Viewer-App holen.
 ### Claude Code
 
 ```sh
-claude mcp add --scope user --env MCP_UPSTREAM_URL="https://mcp.example.internal/mcp" myServer -- ~/.local/bin/spnego-mcp-proxy
+claude mcp add myServer --scope user --env "MCP_UPSTREAM_URL=https://mcp.example.internal/mcp" -- ~/.local/bin/spnego-mcp-proxy
 ```
 
 ### Manueller Test
