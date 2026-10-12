@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >
+          Version to release (e.g. v1.2.0 or 1.2.0).
+          Leave empty to auto-bump from the latest tag.
+        required: false
+        default: ""
+      bump:
+        description: "Bump type used when version is not specified"
+        required: false
+        default: "minor"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+# Needed to push the tag and create the GitHub release
+permissions:
+  contents: write
+
+# Serialize release runs so two dispatches can't pick the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # macOS runner: the darwin binaries link GSS.framework through cgo and
+    # can only be built on a Mac. Windows binaries are cross-compiled.
+    runs-on: macos-latest
+
+    steps:
+      # ------------------------------------------------------------------ #
+      # 1. Checkout — full history required for tags and release notes
+      # ------------------------------------------------------------------ #
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      # ------------------------------------------------------------------ #
+      # 2. Set up Go (version comes from go.mod)
+      # ------------------------------------------------------------------ #
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # ------------------------------------------------------------------ #
+      # 3. Vet and test — abort the release if anything is red
+      # ------------------------------------------------------------------ #
+      - name: Vet
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+
+      - name: Run tests
+        run: go test -race ./...
+
+      # ------------------------------------------------------------------ #
+      # 4. Determine the release version
+      #    Priority: manual input > auto-bump from latest tag
+      # ------------------------------------------------------------------ #
+      - name: Determine version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_BUMP: ${{ github.event.inputs.bump }}
+        run: |
+          if [[ -n "$INPUT_VERSION" ]]; then
+            # Use the manually supplied version (add "v" prefix if missing)
+            VERSION="v${INPUT_VERSION#v}"
+          else
+            # Auto-bump: parse the latest semver tag
+            LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            VERSION_CORE="${LATEST#v}"
+            MAJOR=$(echo "$VERSION_CORE" | cut -d. -f1)
+            MINOR=$(echo "$VERSION_CORE" | cut -d. -f2)
+            PATCH=$(echo "$VERSION_CORE" | cut -d. -f3 | cut -d- -f1)
+
+            case "$INPUT_BUMP" in
+              major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+              patch) PATCH=$((PATCH + 1)) ;;
+            esac
+
+            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            echo "Tag ${VERSION} already exists" >&2
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Releasing ${VERSION}"
+
+      # ------------------------------------------------------------------ #
+      # 5. Tag and push the tag (no commits to main)
+      # ------------------------------------------------------------------ #
+      - name: Tag
+        run: |
+          git tag "${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"
+
+      # ------------------------------------------------------------------ #
+      # 6. GoReleaser — builds the Windows and macOS binaries and creates
+      #    the GitHub release. Reads .goreleaser.yml from the repo root.
+      # ------------------------------------------------------------------ #
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

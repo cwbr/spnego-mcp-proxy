@@ -7,6 +7,7 @@ set -eu
 cd "$(dirname "$0")"
 name=spnego-mcp-proxy
 out=dist
+ldflags="-s -w -X main.version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
 
 rm -rf "$out"
 
@@ -15,13 +16,13 @@ go test ./...
 
 for arch in amd64 arm64; do
 	GOOS=windows GOARCH=$arch CGO_ENABLED=0 \
-		go build -trimpath -ldflags '-s -w' -o "$out/windows-$arch/$name.exe" .
+		go build -trimpath -ldflags "$ldflags" -o "$out/windows-$arch/$name.exe" .
 done
 
 if [ "$(uname -s)" = Darwin ]; then
 	for arch in amd64 arm64; do
 		GOOS=darwin GOARCH=$arch CGO_ENABLED=1 \
-			go build -trimpath -ldflags '-s -w' -o "$out/macos-$arch/$name" .
+			go build -trimpath -ldflags "$ldflags" -o "$out/macos-$arch/$name" .
 	done
 else
 	echo "Skipping macOS build: it requires a Mac (cgo with GSS.framework)." >&2

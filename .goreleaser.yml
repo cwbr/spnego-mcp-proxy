@@ -1,0 +1,67 @@
+# GoReleaser configuration
+# https://goreleaser.com/customization/
+version: 2
+
+project_name: spnego-mcp-proxy
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  # Windows: SSPI through syscalls, no cgo needed
+  - id: windows
+    binary: spnego-mcp-proxy
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+  # macOS: GSS.framework through cgo, requires a macOS build host
+  - id: darwin
+    binary: spnego-mcp-proxy
+    env:
+      - CGO_ENABLED=1
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+# Plain binaries — no zip/tar.gz
+archives:
+  - id: default
+    formats: [binary]
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# Release notes derived from the commits since the previous tag.
+changelog:
+  use: git
+  sort: asc
+  abbrev: 7
+  filters:
+    exclude:
+      - "^chore"
+
+release:
+  draft: false
+  # Automatically mark as pre-release if version contains -rc, -beta, -alpha
+  prerelease: auto
+  name_template: "v{{ .Version }}"

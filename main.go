@@ -12,6 +12,9 @@ import (
 	"syscall"
 )
 
+// version is set at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("spnego-mcp-proxy: ")
@@ -28,6 +31,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	log.Printf("forwarding stdio to %s", target)
+	log.Printf("%s forwarding stdio to %s", version, target)
 	newBridge(newUpstream(target, newHTTPClient(), negotiator), os.Stdout).run(ctx, os.Stdin)
 }

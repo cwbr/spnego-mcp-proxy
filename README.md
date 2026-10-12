@@ -38,6 +38,25 @@ Das Skript führt `go vet` und die Tests aus und erzeugt dann:
 - `dist/macos-arm64/spnego-mcp-proxy` (Apple Silicon, gegen GSS.framework gelinkt)
 - `dist/macos-amd64/spnego-mcp-proxy` (Intel, gegen GSS.framework gelinkt)
 
+## Release (GitHub Actions)
+
+Unter *Actions* > *Release* > *Run workflow* starten, mehr ist nicht nötig.
+Ohne Angabe wird die Version ausgehend vom letzten Tag hochgezählt
+(Standard `minor`, wählbar `patch`/`major`); optional lässt sich eine Version
+wie `v1.2.0` vorgeben. Der Workflow läuft auf einem macOS-Runner, weil die
+macOS-Binaries cgo brauchen. Er
+
+1. führt `go vet` und die Tests aus,
+2. setzt und pusht den Versions-Tag (es wird nichts auf `main` committet),
+3. baut mit GoReleaser die Binaries und hängt sie samt `checksums.txt` an das
+   GitHub-Release: `spnego-mcp-proxy-windows-amd64.exe`,
+   `spnego-mcp-proxy-windows-arm64.exe`, `spnego-mcp-proxy-darwin-arm64`,
+   `spnego-mcp-proxy-darwin-amd64`. Die Release-Notes entstehen aus den
+   Commits seit dem letzten Tag.
+
+Lokal lässt sich der Release-Build ohne Veröffentlichung prüfen:
+`goreleaser release --snapshot --clean --skip=publish`.
+
 ## Windows
 
 ### Ablage
