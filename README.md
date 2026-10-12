@@ -23,6 +23,45 @@ In den Beispielen steht `https://mcp.example.internal/mcp` für den eigenen
 Endpunkt. Mehrere MCP-Server lassen sich mit derselben Binary unter
 verschiedenen Namen und URLs eintragen.
 
+## Schnellinstallation
+
+Ein Befehl lädt die passende Binary aus dem neuesten Release, prüft die
+Prüfsumme, testet die Verbindung und trägt den Server in Claude Code und VS Code
+ein, soweit installiert. Andere Einträge bleiben erhalten. Von einer vorhandenen
+VS-Code-`mcp.json` wird vorher eine Kopie `mcp.json.bak` angelegt. Enthält die
+Datei Kommentare, bleibt sie unverändert, und das Skript gibt den Eintrag zum
+manuellen Einfügen aus. Ein vorhandener Eintrag mit demselben Namen wird ersetzt.
+
+**Windows** (PowerShell, keine Admin-Rechte nötig):
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/cwbr/spnego-mcp-proxy/main/install.ps1))) -Name myServer -Url "https://mcp.example.internal/mcp"
+```
+
+Ohne PowerShell-Kenntnisse geht es auch per Doppelklick:
+[`install.cmd`](https://github.com/cwbr/spnego-mcp-proxy/releases/latest/download/install.cmd)
+herunterladen, doppelklicken und Name und URL eingeben. Die Datei ruft intern
+dasselbe PowerShell-Skript auf. Name und URL lassen sich auch als Argumente
+übergeben (`install.cmd myServer https://...`) oder in den Zeilen
+`set "MCP_NAME="` und `set "MCP_URL="` oben in der Datei vorbelegen. Eine so
+vorbelegte Datei kann man an Kollegen weitergeben, die dann nur noch
+doppelklicken müssen. Wie bei der exe zeigt Windows für heruntergeladene Dateien
+eventuell eine SmartScreen-Warnung.
+
+**macOS** (Terminal):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/cwbr/spnego-mcp-proxy/main/install.sh | sh -s -- myServer "https://mcp.example.internal/mcp"
+```
+
+Die Binary landet unter `%LOCALAPPDATA%\spnego-mcp-proxy\spnego-mcp-proxy.exe`
+bzw. `~/.local/bin/spnego-mcp-proxy`. Ein erneuter Aufruf aktualisiert sie auf
+das neueste Release. Unter Windows funktioniert das auch, während MCP-Server
+laufen; sie nutzen die neue Version nach einem Neustart.
+
+Die manuelle Einrichtung beschreiben die Abschnitte [Windows](#windows) und
+[macOS](#macos).
+
 ## Build (auf dem Mac)
 
 Voraussetzungen: Go ≥ 1.25 und die Xcode Command Line Tools.

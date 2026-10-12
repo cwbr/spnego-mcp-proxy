@@ -65,3 +65,6 @@ release:
   # Automatically mark as pre-release if version contains -rc, -beta, -alpha
   prerelease: auto
   name_template: "v{{ .Version }}"
+  # Double-clickable Windows installer, downloadable via releases/latest/download/install.cmd
+  extra_files:
+    - glob: ./install.cmd
